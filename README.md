@@ -3,6 +3,7 @@
 <img src=".github/banner.svg" alt="machine-agent"/>
 
 <br/>
+<br/>
 
 **A lightweight Go agent that exposes system metadata via a JSON HTTP endpoint.**
 
