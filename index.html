@@ -1,0 +1,1417 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=1280"/>
+<title>machine-agent — metadata over HTTP</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Fraunces:opsz,wght@9..144,400;9..144,600&family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg: #ffffff;
+    --fg: #0a0a0a;
+    --mute: #6b6b6b;
+    --line: #e6e6e6;
+    --line-2: #cfcfcf;
+    --chip: #f3f3f3;
+    --invert-bg: #0a0a0a;
+    --invert-fg: #ffffff;
+    --invert-mute: #9a9a9a;
+    --invert-line: #222222;
+    --font-sans: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+    --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--fg); }
+  body {
+    font-family: var(--font-sans);
+    font-feature-settings: "ss01", "ss02", "cv11";
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  * { box-sizing: border-box; }
+  a { color: inherit; }
+  code, pre, .mono { font-family: var(--font-mono); }
+
+  /* layout */
+  .wrap { max-width: 1280px; margin: 0 auto; padding: 0 48px; }
+  .rule { border: 0; border-top: 1px solid var(--line); margin: 0; }
+  .rule-thick { border: 0; border-top: 1px solid var(--fg); margin: 0; }
+
+  /* nav */
+  nav.top {
+    position: sticky; top: 0; z-index: 30;
+    background: var(--bg);
+    border-bottom: 1px solid var(--line);
+  }
+  nav.top .inner {
+    display: flex; align-items: center; justify-content: space-between;
+    height: 60px;
+  }
+  nav.top a { text-decoration: none; }
+  nav.top .links {
+    display: flex; gap: 28px; font-family: var(--font-mono);
+    font-size: 12px; letter-spacing: 0.02em; color: var(--mute);
+  }
+  nav.top .links a:hover { color: var(--fg); }
+  nav.top .cta {
+    font-family: var(--font-mono); font-size: 12px;
+    border: 1px solid var(--fg); padding: 7px 12px;
+    text-decoration: none; background: var(--fg); color: var(--bg);
+  }
+  nav.top .cta:hover { background: var(--bg); color: var(--fg); }
+
+  /* wordmark */
+  .mark { display: inline-flex; align-items: center; gap: 10px; font-family: var(--font-mono); font-size: 13px; font-weight: 500; letter-spacing: 0.01em; }
+  .mark .glyph {
+    width: 22px; height: 22px; position: relative;
+    border: 1px solid var(--fg);
+  }
+  .mark .glyph::before, .mark .glyph::after {
+    content: ""; position: absolute; background: var(--fg);
+  }
+  .mark .glyph::before { top: 3px; left: 3px; width: 4px; height: 4px; }
+  .mark .glyph::after  { bottom: 3px; right: 3px; width: 4px; height: 4px; }
+  .mark .glyph span.d1 { position: absolute; top: 3px; right: 3px; width: 4px; height: 4px; background: var(--fg); opacity: 0.35; }
+  .mark .glyph span.d2 { position: absolute; bottom: 3px; left: 3px; width: 4px; height: 4px; background: var(--fg); opacity: 0.35; }
+  .mark .name { text-transform: lowercase; }
+  .mark .name b { font-weight: 600; }
+  .mark .ver { color: var(--mute); }
+
+  /* hero shared */
+  .hero {
+    padding: 48px 0 0 0;
+  }
+  .hero-head {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 48px;
+    padding-bottom: 40px; align-items: end;
+  }
+  .kicker {
+    font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.18em;
+    text-transform: uppercase; color: var(--mute);
+    display: flex; gap: 14px; align-items: center;
+  }
+  .kicker .dot { width: 6px; height: 6px; background: var(--fg); border-radius: 50%; display: inline-block; }
+  .hero h1 {
+    font-family: var(--font-sans);
+    font-size: 96px; line-height: 0.92; letter-spacing: -0.04em;
+    font-weight: 500; margin: 20px 0 0 0;
+  }
+  .hero h1 em { font-style: normal; color: var(--mute); }
+  .hero-sub {
+    font-size: 18px; line-height: 1.45; color: #222; max-width: 440px;
+    margin: 0 0 28px 0;
+  }
+  .meta-row {
+    display: flex; gap: 24px; font-family: var(--font-mono); font-size: 11px;
+    color: var(--mute); text-transform: uppercase; letter-spacing: 0.12em;
+  }
+  .meta-row b { color: var(--fg); font-weight: 500; }
+
+  .install {
+    display: flex; align-items: stretch; border: 1px solid var(--fg);
+    font-family: var(--font-mono); font-size: 13px; margin-top: 28px;
+    background: #fff;
+  }
+  .install .prompt { padding: 12px 14px; color: var(--mute); border-right: 1px solid var(--line); user-select: none; }
+  .install .cmd { padding: 12px 14px; flex: 1; white-space: nowrap; overflow-x: auto; }
+  .install .copy {
+    padding: 0 16px; border-left: 1px solid var(--fg); background: var(--fg); color: var(--bg);
+    font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.1em;
+    text-transform: uppercase; cursor: pointer; border-top: 0; border-bottom: 0; border-right: 0;
+  }
+  .install .copy:hover { background: #fff; color: var(--fg); }
+
+  /* hero visual area */
+  .hero-visual {
+    position: relative;
+    border-top: 1px solid var(--fg);
+    border-bottom: 1px solid var(--fg);
+    height: 560px;
+    overflow: hidden;
+    background: var(--bg);
+  }
+  .hero-visual .corner {
+    position: absolute; width: 10px; height: 10px; border: 1px solid var(--fg);
+    background: var(--bg);
+  }
+  .hero-visual .corner.tl { top: -5px; left: -5px; }
+  .hero-visual .corner.tr { top: -5px; right: -5px; }
+  .hero-visual .corner.bl { bottom: -5px; left: -5px; }
+  .hero-visual .corner.br { bottom: -5px; right: -5px; }
+
+  /* variant A: dashboard */
+  .dash {
+    position: absolute; inset: 0;
+    display: grid;
+    grid-template-columns: 1.1fr 0.9fr 1fr;
+    grid-template-rows: 1fr 1fr;
+  }
+  .dash .cell {
+    border-right: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+    padding: 20px 22px; position: relative;
+    display: flex; flex-direction: column; min-height: 0;
+  }
+  .dash .cell:nth-child(3n) { border-right: 0; }
+  .dash .cell:nth-child(n+4) { border-bottom: 0; }
+  .cell-label {
+    font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.16em;
+    color: var(--mute); text-transform: uppercase;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .cell-label .status { display: inline-flex; align-items: center; gap: 6px; color: var(--fg); }
+  .cell-label .status::before {
+    content: ""; width: 6px; height: 6px; background: var(--fg); border-radius: 50%;
+    animation: blink 1.4s infinite;
+  }
+  @keyframes blink { 0%, 70%, 100% { opacity: 1; } 80% { opacity: 0.1; } }
+
+  .big-metric {
+    font-family: var(--font-sans); font-size: 64px; line-height: 1;
+    letter-spacing: -0.03em; font-weight: 500; margin-top: 14px;
+    font-variant-numeric: tabular-nums;
+  }
+  .big-metric .unit { font-size: 20px; color: var(--mute); margin-left: 6px; letter-spacing: 0; }
+  .metric-sub { font-family: var(--font-mono); font-size: 11px; color: var(--mute); margin-top: 6px; }
+
+  /* cpu bars */
+  .cpu-grid {
+    margin-top: auto; display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px;
+    align-items: end; height: 68px;
+  }
+  .cpu-grid .bar {
+    background: var(--fg); width: 100%;
+    transition: height 0.6s cubic-bezier(.4,0,.2,1);
+  }
+
+  /* sparkline */
+  .spark { margin-top: auto; height: 80px; position: relative; }
+  .spark svg { width: 100%; height: 100%; display: block; }
+  .spark .axis { position: absolute; left: 0; right: 0; font-family: var(--font-mono); font-size: 9px; color: var(--mute); display: flex; justify-content: space-between; }
+  .spark .axis.bottom { bottom: -16px; }
+
+  /* mem ring */
+  .ring-wrap { display: flex; align-items: center; gap: 20px; margin-top: auto; }
+  .ring { width: 96px; height: 96px; position: relative; }
+  .ring svg { transform: rotate(-90deg); }
+  .ring .ring-val {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-mono); font-size: 14px; font-weight: 600;
+  }
+  .ring-stats { font-family: var(--font-mono); font-size: 11px; line-height: 1.7; color: var(--mute); }
+  .ring-stats b { color: var(--fg); font-weight: 500; }
+
+  /* load bars */
+  .load-rows { margin-top: auto; display: flex; flex-direction: column; gap: 10px; }
+  .load-row { display: grid; grid-template-columns: 36px 1fr 50px; gap: 10px; align-items: center; font-family: var(--font-mono); font-size: 11px; }
+  .load-row .track { height: 4px; background: var(--line); position: relative; }
+  .load-row .track i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--fg); }
+  .load-row b { text-align: right; font-weight: 500; font-variant-numeric: tabular-nums; }
+
+  /* net */
+  .net-list { margin-top: auto; font-family: var(--font-mono); font-size: 11px; display: flex; flex-direction: column; gap: 6px; }
+  .net-row { display: grid; grid-template-columns: 60px 1fr 70px; gap: 12px; }
+  .net-row .name { color: var(--fg); }
+  .net-row .addr { color: var(--mute); }
+  .net-row .rate { text-align: right; color: var(--fg); font-variant-numeric: tabular-nums; }
+
+  /* hostname strip */
+  .dash .cell.wide {
+    grid-column: span 1;
+  }
+  .host-lines { margin-top: 14px; font-family: var(--font-mono); font-size: 12px; line-height: 1.8; color: #222; }
+  .host-lines .k { color: var(--mute); display: inline-block; width: 90px; }
+
+  /* variant B: mDNS radar */
+  .radar {
+    position: absolute; inset: 0; display: grid; grid-template-columns: 1.2fr 1fr;
+  }
+  .radar .left {
+    position: relative; border-right: 1px solid var(--line);
+    overflow: hidden;
+  }
+  .radar-canvas {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  }
+  .radar-grid {
+    width: 420px; height: 420px; position: relative;
+    border-radius: 50%;
+  }
+  .radar-grid::before {
+    content: ""; position: absolute; inset: 0; border-radius: 50%;
+    border: 1px solid var(--line);
+    box-shadow:
+      inset 0 0 0 1px transparent,
+      0 0 0 1px transparent;
+  }
+  .ring-circle { position: absolute; border: 1px solid var(--line); border-radius: 50%; top: 50%; left: 50%; transform: translate(-50%, -50%); }
+  .ring-circle.r1 { width: 120px; height: 120px; }
+  .ring-circle.r2 { width: 240px; height: 240px; }
+  .ring-circle.r3 { width: 360px; height: 360px; }
+  .ring-circle.r4 { width: 420px; height: 420px; border-color: var(--line-2); }
+  .radar-cross { position: absolute; top: 50%; left: 50%; width: 440px; height: 1px; background: var(--line); transform: translate(-50%, -50%); }
+  .radar-cross.v { width: 1px; height: 440px; }
+  .sweep {
+    position: absolute; top: 50%; left: 50%; width: 210px; height: 2px;
+    background: linear-gradient(to left, var(--fg), transparent);
+    transform-origin: 0 50%;
+    animation: sweep 4s linear infinite;
+  }
+  @keyframes sweep { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+  .node {
+    position: absolute; width: 10px; height: 10px; background: var(--fg);
+    border: 2px solid var(--bg);
+    top: 50%; left: 50%; transform: translate(-50%, -50%);
+    box-shadow: 0 0 0 1px var(--fg);
+  }
+  .node .lbl {
+    position: absolute; left: 14px; top: -2px; white-space: nowrap;
+    font-family: var(--font-mono); font-size: 10px; color: var(--fg);
+    background: var(--bg); padding: 2px 4px; border: 1px solid var(--line);
+  }
+  .node .lbl .ip { color: var(--mute); display: block; font-size: 9px; margin-top: 1px; }
+  .node.self { width: 14px; height: 14px; background: var(--bg); border: 2px solid var(--fg); }
+  .node.self::after { content: ""; position: absolute; inset: 2px; background: var(--fg); }
+  .pulse {
+    position: absolute; top: 50%; left: 50%; border: 1px solid var(--fg); border-radius: 50%;
+    transform: translate(-50%, -50%);
+    opacity: 0;
+    animation: pulse 3.2s ease-out infinite;
+  }
+  @keyframes pulse {
+    0% { width: 8px; height: 8px; opacity: 0.8; }
+    100% { width: 360px; height: 360px; opacity: 0; }
+  }
+  .radar .right {
+    display: flex; flex-direction: column;
+  }
+  .radar .right .head {
+    padding: 18px 22px; border-bottom: 1px solid var(--line);
+    font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--mute);
+    display: flex; justify-content: space-between;
+  }
+  .agent-list { flex: 1; overflow: hidden; }
+  .agent-row {
+    padding: 14px 22px;
+    display: grid; grid-template-columns: 1fr 90px;
+    gap: 8px; border-bottom: 1px solid var(--line);
+    font-family: var(--font-mono); font-size: 12px;
+    opacity: 0; animation: fadein 0.5s forwards;
+  }
+  @keyframes fadein { to { opacity: 1; } }
+  .agent-row .nm { font-weight: 500; }
+  .agent-row .ip { color: var(--mute); font-size: 11px; margin-top: 2px; }
+  .agent-row .rt { text-align: right; font-size: 10px; color: var(--mute); text-transform: uppercase; letter-spacing: 0.1em; }
+  .agent-row .rt b { display: block; color: var(--fg); font-weight: 500; font-size: 11px; }
+
+  /* section titles */
+  section { padding: 120px 0; border-top: 1px solid var(--fg); }
+  .section-head {
+    display: grid; grid-template-columns: 200px 1fr; gap: 48px;
+    margin-bottom: 64px;
+  }
+  .section-head .num {
+    font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.18em;
+    color: var(--mute); text-transform: uppercase;
+  }
+  .section-head h2 {
+    font-size: 56px; line-height: 1; letter-spacing: -0.03em; margin: 0;
+    font-weight: 500; max-width: 720px;
+  }
+  .section-head p {
+    font-size: 16px; line-height: 1.5; color: #333; max-width: 540px; margin: 20px 0 0 0;
+  }
+
+  /* explorer */
+  .explorer {
+    display: grid; grid-template-columns: 320px 1fr; gap: 0;
+    border: 1px solid var(--fg);
+  }
+  .explorer .panel-l {
+    border-right: 1px solid var(--fg);
+    padding: 24px;
+  }
+  .panel-head {
+    font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.16em;
+    text-transform: uppercase; color: var(--mute); margin-bottom: 16px;
+    display: flex; justify-content: space-between;
+  }
+  .toggle-list { display: flex; flex-direction: column; gap: 0; }
+  .toggle {
+    display: grid; grid-template-columns: 18px 1fr auto; gap: 12px;
+    padding: 12px 0; border-bottom: 1px solid var(--line); align-items: center;
+    cursor: pointer; user-select: none;
+  }
+  .toggle:last-child { border-bottom: 0; }
+  .toggle .box {
+    width: 16px; height: 16px; border: 1px solid var(--fg); position: relative;
+  }
+  .toggle.on .box::after {
+    content: ""; position: absolute; inset: 3px; background: var(--fg);
+  }
+  .toggle .label { font-family: var(--font-mono); font-size: 13px; }
+  .toggle .label small { display: block; font-size: 10px; color: var(--mute); margin-top: 2px; letter-spacing: 0.06em; text-transform: uppercase; }
+  .toggle .tag {
+    font-family: var(--font-mono); font-size: 9px; color: var(--mute);
+    letter-spacing: 0.12em; text-transform: uppercase;
+    border: 1px solid var(--line-2); padding: 2px 6px;
+  }
+  .toggle.on .tag { color: var(--fg); border-color: var(--fg); }
+  .toggle.locked { cursor: default; opacity: 0.65; }
+
+  .explorer .panel-r {
+    display: flex; flex-direction: column;
+    min-height: 580px;
+  }
+  .url-bar {
+    display: flex; align-items: center;
+    border-bottom: 1px solid var(--fg);
+    font-family: var(--font-mono); font-size: 13px;
+  }
+  .url-bar .method {
+    padding: 12px 14px; background: var(--fg); color: var(--bg);
+    font-weight: 500; letter-spacing: 0.04em;
+  }
+  .url-bar .url { padding: 12px 14px; flex: 1; color: #222; overflow-x: auto; white-space: nowrap; }
+  .url-bar .url .q { color: var(--mute); }
+  .url-bar .url .k { color: var(--fg); }
+  .url-bar .status { padding: 12px 18px; border-left: 1px solid var(--fg); font-family: var(--font-mono); font-size: 11px; }
+  .url-bar .status .ok { color: var(--fg); }
+  .url-bar .status .time { color: var(--mute); margin-left: 10px; }
+
+  .response {
+    flex: 1; padding: 24px 28px; overflow: auto;
+    font-family: var(--font-mono); font-size: 13px; line-height: 1.65;
+    background: var(--bg);
+    max-height: 640px;
+    white-space: pre;
+  }
+  .response .k { color: var(--fg); }
+  .response .s { color: #333; }
+  .response .n { color: var(--fg); }
+  .response .c { color: var(--mute); }
+  .response details { margin: 0; }
+  .response summary { cursor: pointer; list-style: none; }
+  .response summary::-webkit-details-marker { display: none; }
+  .response .fold::before { content: "▸ "; color: var(--mute); }
+  .response details[open] .fold::before { content: "▾ "; }
+
+  /* sections grid */
+  .sections-table {
+    border-top: 1px solid var(--fg);
+  }
+  .sections-row {
+    display: grid; grid-template-columns: 180px 100px 1fr 160px;
+    gap: 32px; padding: 22px 0; border-bottom: 1px solid var(--line);
+    align-items: baseline;
+  }
+  .sections-row .nm { font-family: var(--font-mono); font-size: 15px; font-weight: 500; }
+  .sections-row .def {
+    font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--mute);
+  }
+  .sections-row.default .def { color: var(--fg); }
+  .sections-row .desc { font-size: 15px; line-height: 1.5; color: #222; }
+  .sections-row .kv { font-family: var(--font-mono); font-size: 11px; color: var(--mute); text-align: right; }
+
+  /* auth / discovery blocks */
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; }
+  .block-title {
+    font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.16em;
+    text-transform: uppercase; color: var(--mute); margin-bottom: 16px;
+  }
+  .codeblock {
+    border: 1px solid var(--fg); background: var(--bg);
+    font-family: var(--font-mono); font-size: 12px; line-height: 1.7;
+  }
+  .codeblock .bar {
+    border-bottom: 1px solid var(--line); padding: 10px 14px;
+    font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--mute);
+    display: flex; justify-content: space-between;
+  }
+  .codeblock pre { margin: 0; padding: 18px; overflow-x: auto; color: #222; }
+  .codeblock .c { color: var(--mute); }
+  .codeblock .k { color: var(--fg); }
+
+  /* discovery output */
+  .disc-output {
+    font-family: var(--font-mono); font-size: 12px; padding: 18px; line-height: 1.8;
+  }
+  .disc-output .host { font-weight: 500; }
+  .disc-output .addr { color: var(--mute); margin-left: 12px; }
+  .disc-output .sub { color: var(--mute); margin-left: 12px; display: block; padding-left: 0; }
+
+  /* footer */
+  footer {
+    background: var(--invert-bg); color: var(--invert-fg);
+    padding: 80px 0 40px 0;
+  }
+  footer .wrap { color: var(--invert-fg); }
+  footer h3 {
+    font-size: 80px; line-height: 0.95; letter-spacing: -0.03em;
+    font-weight: 500; margin: 0 0 48px 0; max-width: 900px;
+  }
+  footer .row {
+    display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 32px;
+    border-top: 1px solid var(--invert-line); padding-top: 32px;
+  }
+  footer .col h4 {
+    font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.16em;
+    text-transform: uppercase; color: var(--invert-mute);
+    font-weight: 500; margin: 0 0 14px 0;
+  }
+  footer .col a {
+    display: block; text-decoration: none; font-family: var(--font-mono); font-size: 13px;
+    padding: 4px 0; color: var(--invert-fg);
+  }
+  footer .col a:hover { color: var(--invert-mute); }
+  footer .mark .glyph { border-color: var(--invert-fg); }
+  footer .mark .glyph::before, footer .mark .glyph::after { background: var(--invert-fg); }
+  footer .mark .glyph span.d1, footer .mark .glyph span.d2 { background: var(--invert-fg); }
+  footer .legal {
+    margin-top: 60px; padding-top: 24px; border-top: 1px solid var(--invert-line);
+    display: flex; justify-content: space-between;
+    font-family: var(--font-mono); font-size: 11px; color: var(--invert-mute);
+  }
+
+  /* tweaks panel */
+  #tweaks-panel {
+    position: fixed; right: 20px; bottom: 20px; z-index: 100;
+    background: #fff; border: 1px solid var(--fg);
+    width: 280px; font-family: var(--font-mono); font-size: 12px;
+    display: none;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+  }
+  #tweaks-panel.open { display: block; }
+  #tweaks-panel .tw-head {
+    padding: 12px 14px; border-bottom: 1px solid var(--fg);
+    display: flex; justify-content: space-between;
+    font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase;
+  }
+  #tweaks-panel .tw-body { padding: 14px; }
+  #tweaks-panel .tw-row { margin-bottom: 16px; }
+  #tweaks-panel .tw-row:last-child { margin-bottom: 0; }
+  #tweaks-panel .tw-label { font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--mute); margin-bottom: 6px; }
+  #tweaks-panel .tw-opts { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+  #tweaks-panel .tw-opt {
+    padding: 8px; border: 1px solid var(--line); background: #fff; cursor: pointer;
+    font-family: var(--font-mono); font-size: 11px; text-align: left;
+  }
+  #tweaks-panel .tw-opt.active { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+  #tweaks-panel .tw-opt:hover:not(.active) { border-color: var(--fg); }
+
+  /* utility */
+  .hide { display: none !important; }
+
+  /* mono wordmark hero */
+  .wordmark-lock {
+    display: inline-flex; align-items: center; gap: 12px; padding: 6px 10px;
+    border: 1px solid var(--fg); font-family: var(--font-mono); font-size: 12px;
+  }
+  .wordmark-lock .dot { width: 6px; height: 6px; background: var(--fg); display: inline-block; }
+
+  /* small */
+  .micro { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--mute); }
+
+</style>
+</head>
+<body>
+
+<!-- Tweaks defaults block -->
+<script>
+  const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+    "fontPairing": "geist",
+    "heroVariant": "dashboard"
+  }/*EDITMODE-END*/;
+  let __tweaks = { ...TWEAK_DEFAULTS };
+</script>
+
+<!-- NAV -->
+<nav class="top">
+  <div class="wrap inner">
+    <a href="https://github.com/klipitkas/machine-agent/releases/latest" target="_blank" rel="noopener" class="mark" aria-label="machine-agent">
+      <span class="glyph"><span class="d1"></span><span class="d2"></span></span>
+      <span class="name"><b>machine-agent</b></span>
+      <span class="ver" id="ver-tag">latest ↗</span>
+    </a>
+    <div class="links">
+      <a href="#explorer">explorer</a>
+      <a href="#sections">sections</a>
+      <a href="#auth">auth</a>
+      <a href="#discovery">discovery</a>
+      <a href="#docker">docker</a>
+    </div>
+    <a href="#install" class="cta">$ docker run</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<header class="hero">
+  <div class="wrap">
+    <div class="hero-head">
+      <div>
+        <h1>Metadata<br/>for every<br/>machine on<br/>your LAN<em>.</em></h1>
+      </div>
+      <div>
+        <p class="hero-sub">A lightweight Go agent that exposes system metadata over a single JSON HTTP endpoint. Drop it on every device in your homelab and inspect them from one place.</p>
+        <div class="meta-row">
+          <span><b>~10 MB</b> binary</span>
+          <span><b>one</b> endpoint</span>
+          <span><b>mDNS</b> auto-discovery</span>
+          <span><b>docker</b> ready</span>
+        </div>
+        <div class="install" id="install">
+          <span class="prompt">$</span>
+          <span class="cmd" id="install-cmd">docker run -d -p 7891:7891 klipitkas/machine-agent</span>
+          <button class="copy" onclick="copyInstall(this)">copy</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- VISUAL -->
+    <div class="hero-visual">
+      <span class="corner tl"></span><span class="corner tr"></span>
+      <span class="corner bl"></span><span class="corner br"></span>
+
+      <!-- Variant A: Dashboard -->
+      <div class="dash" id="dash-variant">
+        <div class="cell">
+          <div class="cell-label">
+            <span>host</span>
+            <span class="status">live</span>
+          </div>
+          <div class="host-lines">
+            <div><span class="k">hostname</span>raspberry-pi</div>
+            <div><span class="k">os</span>linux / arm64</div>
+            <div><span class="k">kernel</span>6.6.20-v8+</div>
+            <div><span class="k">uptime</span><span id="uptime">14d 03:21:17</span></div>
+            <div><span class="k">procs</span><span id="procs">247</span></div>
+          </div>
+        </div>
+
+        <div class="cell">
+          <div class="cell-label">
+            <span>cpu · 8 cores</span>
+            <span class="status"><span id="cpu-total">37</span>%</span>
+          </div>
+          <div class="big-metric"><span id="cpu-big">37</span><span class="unit">%</span></div>
+          <div class="metric-sub" id="cpu-model">BCM2712 @ 2.40 GHz</div>
+          <div class="cpu-grid" id="cpu-grid"></div>
+        </div>
+
+        <div class="cell">
+          <div class="cell-label">
+            <span>memory</span>
+            <span class="status">79.5%</span>
+          </div>
+          <div class="ring-wrap">
+            <div class="ring">
+              <svg viewBox="0 0 100 100" width="96" height="96">
+                <circle cx="50" cy="50" r="44" fill="none" stroke="#e6e6e6" stroke-width="4"/>
+                <circle id="mem-ring" cx="50" cy="50" r="44" fill="none" stroke="#0a0a0a" stroke-width="4"
+                        stroke-dasharray="219.9 276.46" stroke-linecap="butt"/>
+              </svg>
+              <div class="ring-val" id="mem-pct">79.5%</div>
+            </div>
+            <div class="ring-stats">
+              <div><b>12.7 GB</b> used</div>
+              <div><b>3.3 GB</b> avail</div>
+              <div><b>16.0 GB</b> total</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="cell">
+          <div class="cell-label">
+            <span>load avg</span>
+            <span class="status">5m</span>
+          </div>
+          <div class="load-rows">
+            <div class="load-row"><span>1m</span><span class="track"><i id="l1" style="width:58%"></i></span><b id="l1v">1.24</b></div>
+            <div class="load-row"><span>5m</span><span class="track"><i id="l5" style="width:44%"></i></span><b id="l5v">0.88</b></div>
+            <div class="load-row"><span>15m</span><span class="track"><i id="l15" style="width:31%"></i></span><b id="l15v">0.62</b></div>
+          </div>
+          <div class="metric-sub" style="margin-top:14px">normalized over 2.00 (8 cores)</div>
+        </div>
+
+        <div class="cell">
+          <div class="cell-label">
+            <span>cpu · history</span>
+            <span>60s</span>
+          </div>
+          <div class="spark">
+            <svg viewBox="0 0 300 80" preserveAspectRatio="none">
+              <path id="spark-path" d="" stroke="#0a0a0a" stroke-width="1.5" fill="none" />
+              <path id="spark-fill" d="" fill="#0a0a0a" fill-opacity="0.06" stroke="none"/>
+              <line x1="0" y1="40" x2="300" y2="40" stroke="#e6e6e6" stroke-dasharray="2 3"/>
+            </svg>
+            <div class="axis bottom"><span>-60s</span><span>-30s</span><span>now</span></div>
+          </div>
+        </div>
+
+        <div class="cell">
+          <div class="cell-label">
+            <span>network</span>
+            <span>4 iface</span>
+          </div>
+          <div class="net-list">
+            <div class="net-row"><span class="name">eth0</span><span class="addr">192.168.1.14</span><span class="rate" id="r0">↓ 412 KB/s</span></div>
+            <div class="net-row"><span class="name">wlan0</span><span class="addr">192.168.1.23</span><span class="rate" id="r1">↓ 18 KB/s</span></div>
+            <div class="net-row"><span class="name">docker0</span><span class="addr">172.17.0.1</span><span class="rate" id="r2">↓ 0 KB/s</span></div>
+            <div class="net-row"><span class="name">lo</span><span class="addr">127.0.0.1</span><span class="rate">—</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Variant B: mDNS radar -->
+      <div class="radar hide" id="radar-variant">
+        <div class="left">
+          <div class="radar-canvas">
+            <div class="radar-grid">
+              <div class="radar-cross"></div>
+              <div class="radar-cross v"></div>
+              <div class="ring-circle r1"></div>
+              <div class="ring-circle r2"></div>
+              <div class="ring-circle r3"></div>
+              <div class="ring-circle r4"></div>
+              <div class="sweep"></div>
+              <div class="pulse" style="animation-delay:0s"></div>
+              <div class="pulse" style="animation-delay:1.6s"></div>
+
+              <div class="node self" style="transform:translate(-50%,-50%)">
+                <div class="lbl" style="left:-4px;top:18px">
+                  this
+                  <span class="ip">127.0.0.1</span>
+                </div>
+              </div>
+              <div class="node" style="transform:translate(calc(-50% + 80px), calc(-50% - 60px))">
+                <div class="lbl">raspberry-pi<span class="ip">192.168.1.10:7891</span></div>
+              </div>
+              <div class="node" style="transform:translate(calc(-50% - 110px), calc(-50% - 40px))">
+                <div class="lbl" style="left:-160px;text-align:right">nas-server<span class="ip">192.168.1.20:7891</span></div>
+              </div>
+              <div class="node" style="transform:translate(calc(-50% + 140px), calc(-50% + 80px))">
+                <div class="lbl">media-box<span class="ip">192.168.1.32:7891</span></div>
+              </div>
+              <div class="node" style="transform:translate(calc(-50% - 70px), calc(-50% + 120px))">
+                <div class="lbl" style="left:-150px;text-align:right">dev-laptop<span class="ip">192.168.1.44:7891</span></div>
+              </div>
+              <div class="node" style="transform:translate(calc(-50% + 30px), calc(-50% - 130px))">
+                <div class="lbl">printer-host<span class="ip">192.168.1.51:7891</span></div>
+              </div>
+            </div>
+          </div>
+          <div style="position:absolute;top:20px;left:22px;" class="micro">_machine-agent._tcp</div>
+          <div style="position:absolute;bottom:20px;left:22px;" class="micro">sweep · 192.168.1.0/24</div>
+        </div>
+        <div class="right">
+          <div class="head">
+            <span>discovered</span>
+            <span><span id="disc-count">5</span> agents</span>
+          </div>
+          <div class="agent-list" id="agent-list"></div>
+          <div style="padding:16px 22px; border-top:1px solid var(--line); font-family:var(--font-mono); font-size:11px; color: var(--mute);">
+            → machine-agent -discover
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- under-visual strip -->
+    <div style="display:grid; grid-template-columns: repeat(4, 1fr); border-left:1px solid var(--line); margin-top: 0;">
+      <div style="padding:16px 20px; border-right:1px solid var(--line); border-bottom:1px solid var(--fg);">
+        <div class="micro">01 · run</div>
+        <div class="mono" style="font-size:13px; margin-top:6px">docker run -d -p 7891:7891</div>
+      </div>
+      <div style="padding:16px 20px; border-right:1px solid var(--line); border-bottom:1px solid var(--fg);">
+        <div class="micro">02 · curl</div>
+        <div class="mono" style="font-size:13px; margin-top:6px">GET /metadata</div>
+      </div>
+      <div style="padding:16px 20px; border-right:1px solid var(--line); border-bottom:1px solid var(--fg);">
+        <div class="micro">03 · discover</div>
+        <div class="mono" style="font-size:13px; margin-top:6px">_machine-agent._tcp</div>
+      </div>
+      <div style="padding:16px 20px; border-bottom:1px solid var(--fg);">
+        <div class="micro">04 · monitor</div>
+        <div class="mono" style="font-size:13px; margin-top:6px">your favorite tool</div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- EXPLORER -->
+<section id="explorer">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="num">§ 01 — endpoint</div>
+      <div>
+        <h2>One endpoint. Ask for exactly what you need.</h2>
+        <p><code>?include=</code> selects which sections the agent returns. Default gives you the essentials; <code>all</code> gives you everything including processes, disks, and Docker containers. Toggle below.</p>
+      </div>
+    </div>
+
+    <div class="explorer">
+      <div class="panel-l">
+        <div class="panel-head">
+          <span>include</span>
+          <span id="toggle-summary">5 of 10</span>
+        </div>
+        <div class="toggle-list" id="toggle-list">
+          <!-- rendered by JS -->
+        </div>
+      </div>
+      <div class="panel-r">
+        <div class="url-bar">
+          <span class="method">GET</span>
+          <span class="url" id="url-display"></span>
+          <span class="status"><span class="ok">200</span><span class="time">12ms</span></span>
+        </div>
+        <div class="response" id="response-body"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SECTIONS -->
+<section id="sections">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="num">§ 02 — surface area</div>
+      <div>
+        <h2>Ten sections. Five on by default. No magic.</h2>
+      </div>
+    </div>
+    <div class="sections-table">
+      <div class="sections-row default">
+        <span class="nm">host</span>
+        <span class="def">default</span>
+        <span class="desc">hostname, OS, platform, kernel, uptime, boot time, process count</span>
+        <span class="kv">string · 7 fields</span>
+      </div>
+      <div class="sections-row default">
+        <span class="nm">cpu</span>
+        <span class="def">default</span>
+        <span class="desc">model, core count, per-core and total usage percentages</span>
+        <span class="kv">object · per-core</span>
+      </div>
+      <div class="sections-row default">
+        <span class="nm">memory</span>
+        <span class="def">default</span>
+        <span class="desc">total, used, available — as bytes and human-readable strings</span>
+        <span class="kv">bytes + human</span>
+      </div>
+      <div class="sections-row default">
+        <span class="nm">load</span>
+        <span class="def">default</span>
+        <span class="desc">1, 5, 15-minute load averages</span>
+        <span class="kv">3 floats</span>
+      </div>
+      <div class="sections-row default">
+        <span class="nm">network</span>
+        <span class="def">default</span>
+        <span class="desc">interfaces with MAC, IPs, flags, MTU, plus I/O counters</span>
+        <span class="kv">array · live</span>
+      </div>
+      <div class="sections-row">
+        <span class="nm">swap</span>
+        <span class="def">opt-in</span>
+        <span class="desc">total, used, free — bytes and human-readable, plus usage %</span>
+        <span class="kv">?include=swap</span>
+      </div>
+      <div class="sections-row">
+        <span class="nm">disks</span>
+        <span class="def">opt-in</span>
+        <span class="desc">mounted partitions with device, mountpoint, fstype, sizes</span>
+        <span class="kv">?include=disks</span>
+      </div>
+      <div class="sections-row">
+        <span class="nm">processes</span>
+        <span class="def">opt-in</span>
+        <span class="desc">top 50 by CPU — PID, name, status, CPU%, mem%, user, cmdline</span>
+        <span class="kv">?include=processes</span>
+      </div>
+      <div class="sections-row">
+        <span class="nm">users</span>
+        <span class="def">opt-in</span>
+        <span class="desc">logged-in users with terminal and host</span>
+        <span class="kv">?include=users</span>
+      </div>
+      <div class="sections-row" style="border-bottom:1px solid var(--fg)">
+        <span class="nm">docker</span>
+        <span class="def">opt-in</span>
+        <span class="desc">server version plus all containers (name, image, state, ports, labels)</span>
+        <span class="kv">?include=docker</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- AUTH -->
+<section id="auth">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="num">§ 03 — auth</div>
+      <div>
+        <h2>Opt-in bearer token. Nothing else in the way.</h2>
+        <p>Set <code>TOKEN</code> and every request requires it. Leave it unset for open access on trusted networks. Both header and query-param styles are supported.</p>
+      </div>
+    </div>
+
+    <div class="two-col">
+      <div>
+        <div class="block-title">— set the token</div>
+        <div class="codeblock">
+          <div class="bar"><span>shell</span><span>env</span></div>
+<pre><span class="k">TOKEN</span>=mysecret ./machine-agent</pre>
+        </div>
+        <div class="block-title" style="margin-top:28px">— header (preferred)</div>
+        <div class="codeblock">
+          <div class="bar"><span>request</span><span>bearer</span></div>
+<pre>curl <span class="k">-H</span> <span class="c">"Authorization: Bearer mysecret"</span> \
+     http://192.168.1.10:7891/metadata</pre>
+        </div>
+      </div>
+      <div>
+        <div class="block-title">— query param (convenience)</div>
+        <div class="codeblock">
+          <div class="bar"><span>request</span><span>?token</span></div>
+<pre>curl <span class="c">"http://192.168.1.10:7891/metadata?token=mysecret"</span></pre>
+        </div>
+        <div class="block-title" style="margin-top:28px">— unauthenticated</div>
+        <div class="codeblock">
+          <div class="bar"><span>response</span><span>401</span></div>
+<pre><span class="c">// without Authorization header or ?token=</span>
+<span class="k">HTTP</span>/1.1 401 Unauthorized
+{ <span class="k">"error"</span>: <span class="c">"missing or invalid token"</span> }</pre>
+        </div>
+
+        <div style="margin-top:32px; padding: 18px 20px; border: 1px solid var(--fg);">
+          <div class="micro" style="margin-bottom:8px">note</div>
+          <div style="font-size:14px; line-height:1.5">Health check at <code>GET /health</code> is always open. It returns <code>{"status":"ok"}</code>.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- DISCOVERY -->
+<section id="discovery">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="num">§ 04 — discovery</div>
+      <div>
+        <h2>Agents announce themselves. You don't keep a list.</h2>
+        <p>Each running agent advertises as <code>_machine-agent._tcp</code> over mDNS / Bonjour. Your central tool finds every agent on the LAN without knowing a single IP up front.</p>
+      </div>
+    </div>
+
+    <div class="two-col">
+      <div>
+        <div class="block-title">— discover</div>
+        <div class="codeblock">
+          <div class="bar"><span>shell</span><span>discover</span></div>
+<pre>./machine-agent <span class="k">-discover</span></pre>
+        </div>
+        <div class="block-title" style="margin-top:28px">— opt out</div>
+        <div class="codeblock">
+          <div class="bar"><span>shell</span><span>no-mdns</span></div>
+<pre>./machine-agent <span class="k">-no-mdns</span>
+<span class="c"># don't announce on the LAN</span></pre>
+        </div>
+        <div style="margin-top:28px; font-size:14px; line-height:1.55; color:#333; max-width:440px">
+          In Docker, mDNS needs <code>--net=host</code>. With bridge networking the announcement stays inside the container — fine if you don't want broadcast.
+        </div>
+      </div>
+      <div>
+        <div class="block-title">— output</div>
+        <div class="codeblock">
+          <div class="bar"><span>terminal</span><span>live</span></div>
+          <div class="disc-output">
+            Found <b>4</b> agent(s):<br/><br/>
+            <span class="host">raspberry-pi</span><span class="addr">192.168.1.10:7891</span><br/>
+            <span class="sub">machine-agent on raspberry-pi</span><br/><br/>
+            <span class="host">nas-server</span><span class="addr">192.168.1.20:7891</span><br/>
+            <span class="sub">machine-agent on nas-server</span><br/><br/>
+            <span class="host">media-box</span><span class="addr">192.168.1.32:7891</span><br/>
+            <span class="sub">machine-agent on media-box</span><br/><br/>
+            <span class="host">dev-laptop</span><span class="addr">192.168.1.44:7891</span><br/>
+            <span class="sub">machine-agent on dev-laptop</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- DOCKER / INSTALL -->
+<section id="docker">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="num">§ 05 — deploy</div>
+      <div>
+        <h2>Docker, binary, or source. Pick one.</h2>
+      </div>
+    </div>
+
+    <div style="display:grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--fg);">
+      <div style="border-right:1px solid var(--fg); padding: 28px;">
+        <div class="block-title">A — docker</div>
+        <div style="font-size:14px; line-height:1.5; margin-bottom:18px; min-height: 68px;">Pull and run. Mount the Docker socket to collect container info from the host.</div>
+        <div class="codeblock">
+          <div class="bar"><span>sh</span><span>pull</span></div>
+<pre>docker pull klipitkas/machine-agent
+docker run <span class="k">-d -p</span> 7891:7891 \
+  <span class="k">-v</span> /var/run/docker.sock:\
+/var/run/docker.sock:ro \
+  klipitkas/machine-agent</pre>
+        </div>
+      </div>
+
+      <div style="border-right:1px solid var(--fg); padding: 28px;">
+        <div class="block-title">B — binary</div>
+        <div style="font-size:14px; line-height:1.5; margin-bottom:18px; min-height: 68px;">Build from source — single static binary, around 4 MB, no runtime deps.</div>
+        <div class="codeblock">
+          <div class="bar"><span>sh</span><span>build</span></div>
+<pre>go build <span class="k">-o</span> machine-agent \
+  ./cmd/machine-agent
+
+./machine-agent
+./machine-agent <span class="k">-port</span> 9999
+./machine-agent <span class="k">-version</span></pre>
+        </div>
+      </div>
+
+      <div style="padding: 28px;">
+        <div class="block-title">C — host metrics (linux)</div>
+        <div style="font-size:14px; line-height:1.5; margin-bottom:18px; min-height: 68px;">Report the host's metadata instead of the container's — mount <code>/proc</code>, <code>/sys</code>, <code>/etc</code>.</div>
+        <div class="codeblock">
+          <div class="bar"><span>sh</span><span>--net=host</span></div>
+<pre>docker run <span class="k">-d --net=host --pid=host</span> \
+  <span class="k">-v</span> /proc:/host/proc:ro \
+  <span class="k">-v</span> /sys:/host/sys:ro \
+  <span class="k">-v</span> /etc:/host/etc:ro \
+  <span class="k">-e</span> HOST_PROC=/host/proc \
+  <span class="k">-e</span> HOST_SYS=/host/sys \
+  <span class="k">-e</span> HOST_ETC=/host/etc \
+  machine-agent</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- layout -->
+    <div style="margin-top: 60px;">
+      <div class="block-title">— repository layout</div>
+      <div style="display:grid; grid-template-columns: 2fr 1fr; gap: 32px; margin-top: 14px;">
+        <div class="codeblock">
+          <div class="bar"><span>tree</span><span>machine-agent/</span></div>
+<pre>machine-agent/
+├── <span class="k">cmd/machine-agent/</span>main.go          <span class="c"># entry point</span>
+├── <span class="k">internal/</span>
+│   ├── <span class="k">collector/</span>
+│   │   ├── collector.go          <span class="c"># metadata collection</span>
+│   │   └── types.go              <span class="c"># data types + helpers</span>
+│   ├── <span class="k">discovery/</span>
+│   │   └── mdns.go               <span class="c"># mDNS advertisement</span>
+│   └── <span class="k">server/</span>
+│       └── server.go             <span class="c"># HTTP, auth, routing</span>
+├── go.mod
+└── README.md</pre>
+        </div>
+        <div style="font-size:14px; line-height:1.55; color:#222">
+          <p style="margin-top:0">Four packages, zero ceremony. The collector does the work, the server exposes it, discovery announces it, <code>main.go</code> wires them together.</p>
+          <p>If you want to add a metadata section, you touch <code>collector/</code>. If you want to change transport, you touch <code>server/</code>. That's it.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="wrap">
+    <h3>Drop it on every box. Query one place. Move on.</h3>
+
+    <div class="row">
+      <div class="col">
+        <div class="mark" style="margin-bottom:20px">
+          <span class="glyph"><span class="d1"></span><span class="d2"></span></span>
+          <span class="name"><b>machine-agent</b></span>
+        </div>
+        <div style="font-family:var(--font-mono); font-size:11px; color: var(--invert-mute); line-height:1.7">
+          MIT licensed.<br/>
+          Written in Go.<br/>
+          ~10 MB static binary.
+        </div>
+      </div>
+      <div class="col">
+        <h4>links</h4>
+        <a href="https://github.com/klipitkas/machine-agent">github ↗</a>
+        <a href="#">releases ↗</a>
+        <a href="#">docker hub ↗</a>
+        <a href="#">license ↗</a>
+      </div>
+      <div class="col">
+        <h4>docs</h4>
+        <a href="#explorer">endpoint</a>
+        <a href="#sections">sections</a>
+        <a href="#auth">auth</a>
+        <a href="#discovery">discovery</a>
+      </div>
+      <div class="col">
+        <h4>install</h4>
+        <a href="#docker">docker</a>
+        <a href="#docker">binary</a>
+        <a href="#docker">host metrics</a>
+      </div>
+    </div>
+    <div class="legal">
+      <span>© 2026 — machine-agent contributors</span>
+      <span id="footer-ver">MIT · klipitkas/machine-agent</span>
+    </div>
+  </div>
+</footer>
+
+<!-- TWEAKS PANEL -->
+<div id="tweaks-panel">
+  <div class="tw-head">
+    <span>Tweaks</span>
+    <span id="tw-close" style="cursor:pointer">×</span>
+  </div>
+  <div class="tw-body">
+    <div class="tw-row">
+      <div class="tw-label">Hero variant</div>
+      <div class="tw-opts">
+        <button class="tw-opt" data-key="heroVariant" data-val="dashboard">Dashboard</button>
+        <button class="tw-opt" data-key="heroVariant" data-val="radar">mDNS radar</button>
+      </div>
+    </div>
+    <div class="tw-row">
+      <div class="tw-label">Font pairing</div>
+      <div class="tw-opts" style="grid-template-columns:1fr">
+        <button class="tw-opt" data-key="fontPairing" data-val="space-jb">Space Grotesk / JetBrains</button>
+        <button class="tw-opt" data-key="fontPairing" data-val="inter-jb">Inter / JetBrains</button>
+        <button class="tw-opt" data-key="fontPairing" data-val="geist">Geist / Geist Mono</button>
+        <button class="tw-opt" data-key="fontPairing" data-val="fraunces-plex">Fraunces / IBM Plex Mono</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ---------- tweaks host handshake ---------- */
+(function(){
+  window.addEventListener('message', function(ev){
+    const d = ev.data || {};
+    if (d.type === '__activate_edit_mode') {
+      document.getElementById('tweaks-panel').classList.add('open');
+    } else if (d.type === '__deactivate_edit_mode') {
+      document.getElementById('tweaks-panel').classList.remove('open');
+    }
+  });
+  try { window.parent.postMessage({type:'__edit_mode_available'},'*'); } catch(e){}
+  document.getElementById('tw-close').addEventListener('click', function(){
+    document.getElementById('tweaks-panel').classList.remove('open');
+  });
+})();
+
+/* ---------- tweak application ---------- */
+const FONT_MAP = {
+  'space-jb':     { sans: '"Space Grotesk", ui-sans-serif, sans-serif', mono: '"JetBrains Mono", ui-monospace, monospace' },
+  'inter-jb':     { sans: '"Inter", ui-sans-serif, sans-serif',           mono: '"JetBrains Mono", ui-monospace, monospace' },
+  'geist':        { sans: '"Geist", ui-sans-serif, sans-serif',           mono: '"Geist Mono", ui-monospace, monospace' },
+  'fraunces-plex':{ sans: '"Fraunces", ui-serif, serif',                 mono: '"IBM Plex Mono", ui-monospace, monospace' }
+};
+function applyTweaks(){
+  const fp = FONT_MAP[__tweaks.fontPairing] || FONT_MAP['space-jb'];
+  document.documentElement.style.setProperty('--font-sans', fp.sans);
+  document.documentElement.style.setProperty('--font-mono', fp.mono);
+
+  const hv = __tweaks.heroVariant;
+  document.getElementById('dash-variant').classList.toggle('hide', hv !== 'dashboard');
+  document.getElementById('radar-variant').classList.toggle('hide', hv !== 'radar');
+
+  // update active states
+  document.querySelectorAll('#tweaks-panel .tw-opt').forEach(b => {
+    const k = b.getAttribute('data-key'), v = b.getAttribute('data-val');
+    b.classList.toggle('active', __tweaks[k] === v);
+  });
+}
+document.querySelectorAll('#tweaks-panel .tw-opt').forEach(b => {
+  b.addEventListener('click', () => {
+    const k = b.getAttribute('data-key'), v = b.getAttribute('data-val');
+    __tweaks[k] = v;
+    applyTweaks();
+    try { window.parent.postMessage({type:'__edit_mode_set_keys', edits:{[k]:v}},'*'); } catch(e){}
+  });
+});
+applyTweaks();
+
+/* ---------- install copy ---------- */
+function copyInstall(btn){
+  const cmd = document.getElementById('install-cmd').textContent.trim();
+  try { navigator.clipboard.writeText(cmd); } catch(e){}
+  const prev = btn.textContent;
+  btn.textContent = 'copied';
+  setTimeout(() => { btn.textContent = prev; }, 1200);
+}
+window.copyInstall = copyInstall;
+
+/* ---------- dashboard animation ---------- */
+(function(){
+  const cpuGrid = document.getElementById('cpu-grid');
+  const bars = [];
+  for (let i = 0; i < 8; i++){
+    const d = document.createElement('div');
+    d.className = 'bar';
+    d.style.height = (20 + Math.random()*70) + '%';
+    cpuGrid.appendChild(d); bars.push(d);
+  }
+  const cpuBig = document.getElementById('cpu-big');
+  const cpuTotal = document.getElementById('cpu-total');
+  const memRing = document.getElementById('mem-ring');
+  const memPct = document.getElementById('mem-pct');
+  const sparkPath = document.getElementById('spark-path');
+  const sparkFill = document.getElementById('spark-fill');
+  const uptimeEl = document.getElementById('uptime');
+  const procsEl = document.getElementById('procs');
+
+  let history = Array.from({length:60}, ()=>30 + Math.random()*20);
+  let upSec = 14*86400 + 3*3600 + 21*60 + 17;
+
+  function fmtUptime(s){
+    const d = Math.floor(s/86400), r = s - d*86400;
+    const h = Math.floor(r/3600), rr = r - h*3600;
+    const m = Math.floor(rr/60), ss = rr - m*60;
+    const pad = n => String(n).padStart(2,'0');
+    return `${d}d ${pad(h)}:${pad(m)}:${pad(ss)}`;
+  }
+  function drawSpark(){
+    const w = 300, h = 80;
+    const pts = history.map((v, i) => [ (i/(history.length-1))*w, h - (v/100)*h*0.9 - 4 ]);
+    const d = 'M ' + pts.map(p => p[0].toFixed(1)+','+p[1].toFixed(1)).join(' L ');
+    sparkPath.setAttribute('d', d);
+    sparkFill.setAttribute('d', d + ` L ${w},${h} L 0,${h} Z`);
+  }
+  drawSpark();
+
+  function tick(){
+    upSec++;
+    uptimeEl.textContent = fmtUptime(upSec);
+
+    const target = 28 + Math.sin(Date.now()/3200)*10 + Math.random()*18;
+    history.shift(); history.push(target);
+    drawSpark();
+
+    const total = Math.round(target);
+    cpuBig.textContent = total;
+    cpuTotal.textContent = total;
+    bars.forEach(b => { b.style.height = (15 + Math.random()*80) + '%'; });
+
+    // mem oscillate
+    const mp = 74 + Math.sin(Date.now()/5000)*6;
+    const c = 2 * Math.PI * 44;
+    memRing.setAttribute('stroke-dasharray', `${(mp/100*c).toFixed(1)} ${c.toFixed(2)}`);
+    memPct.textContent = mp.toFixed(1) + '%';
+
+    // load
+    const l1 = 0.8 + Math.random()*0.9;
+    const l5 = 0.6 + Math.random()*0.5;
+    const l15 = 0.4 + Math.random()*0.3;
+    document.getElementById('l1').style.width = (l1/2*100) + '%';
+    document.getElementById('l5').style.width = (l5/2*100) + '%';
+    document.getElementById('l15').style.width = (l15/2*100) + '%';
+    document.getElementById('l1v').textContent = l1.toFixed(2);
+    document.getElementById('l5v').textContent = l5.toFixed(2);
+    document.getElementById('l15v').textContent = l15.toFixed(2);
+
+    document.getElementById('r0').textContent = '↓ ' + (300+Math.round(Math.random()*220)) + ' KB/s';
+    document.getElementById('r1').textContent = '↓ ' + (10+Math.round(Math.random()*30)) + ' KB/s';
+
+    procsEl.textContent = 240 + Math.round(Math.random()*15);
+  }
+  setInterval(tick, 1200);
+})();
+
+/* ---------- radar discovery feed ---------- */
+(function(){
+  const agents = [
+    { nm: 'raspberry-pi', ip: '192.168.1.10:7891', rtt: '4ms'  },
+    { nm: 'nas-server',   ip: '192.168.1.20:7891', rtt: '2ms'  },
+    { nm: 'media-box',    ip: '192.168.1.32:7891', rtt: '8ms'  },
+    { nm: 'dev-laptop',   ip: '192.168.1.44:7891', rtt: '11ms' },
+    { nm: 'printer-host', ip: '192.168.1.51:7891', rtt: '14ms' },
+  ];
+  const list = document.getElementById('agent-list');
+  function render(n){
+    list.innerHTML = '';
+    for (let i = 0; i < n; i++){
+      const a = agents[i];
+      const row = document.createElement('div');
+      row.className = 'agent-row';
+      row.style.animationDelay = (i * 0.15) + 's';
+      row.innerHTML = `
+        <div>
+          <div class="nm">${a.nm}</div>
+          <div class="ip">${a.ip}</div>
+        </div>
+        <div class="rt">rtt<br/><b>${a.rtt}</b></div>
+      `;
+      list.appendChild(row);
+    }
+  }
+  let count = 0;
+  function step(){
+    count = (count % 5) + 1;
+    document.getElementById('disc-count').textContent = count;
+    render(count);
+  }
+  step();
+  setInterval(step, 2800);
+})();
+
+/* ---------- endpoint explorer ---------- */
+(function(){
+  const SECTIONS = [
+    { k: 'host',      def: true,  desc: 'hostname, OS, kernel, uptime' },
+    { k: 'cpu',       def: true,  desc: 'model, cores, usage' },
+    { k: 'memory',    def: true,  desc: 'total, used, available' },
+    { k: 'load',      def: true,  desc: '1, 5, 15 min averages' },
+    { k: 'network',   def: true,  desc: 'interfaces + IO counters' },
+    { k: 'swap',      def: false, desc: 'total, used, free' },
+    { k: 'disks',     def: false, desc: 'mounted partitions' },
+    { k: 'processes', def: false, desc: 'top 50 by CPU' },
+    { k: 'users',     def: false, desc: 'logged-in users' },
+    { k: 'docker',    def: false, desc: 'containers + version' },
+  ];
+  const state = {};
+  SECTIONS.forEach(s => state[s.k] = s.def);
+
+  const RESPONSES = {
+    host: {
+      hostname: "raspberry-pi",
+      os: "linux",
+      platform: "debian",
+      platform_version: "12",
+      kernel: "6.6.20-v8+",
+      uptime_seconds: 1221677,
+      boot_time: "2026-04-04T09:01:05Z",
+      process_count: 247
+    },
+    cpu: {
+      model: "Cortex-A76 @ 2.40 GHz",
+      cores: 8,
+      usage_percent: 36.8,
+      per_core: [42.1, 31.7, 29.4, 38.2, 44.0, 27.5, 33.1, 48.7]
+    },
+    memory: {
+      total_bytes: 17179869184,
+      total: "16.0 GB",
+      used_bytes: 13659144192,
+      used: "12.7 GB",
+      available_bytes: 3520724992,
+      available: "3.3 GB",
+      used_percent: 79.5
+    },
+    load: { "1m": 1.24, "5m": 0.88, "15m": 0.62 },
+    network: [
+      { name: "eth0",    mac: "dc:a6:32:12:3a:44", ips: ["192.168.1.14"], flags: ["up","broadcast"], mtu: 1500 },
+      { name: "wlan0",   mac: "dc:a6:32:12:3a:45", ips: ["192.168.1.23"], flags: ["up","broadcast"], mtu: 1500 },
+      { name: "docker0", mac: "02:42:ac:11:00:01", ips: ["172.17.0.1"],  flags: ["up"],             mtu: 1500 }
+    ],
+    swap: {
+      total_bytes: 2147483648, total: "2.0 GB",
+      used_bytes: 167772160,  used: "160 MB",
+      free_bytes: 1979711488, free: "1.84 GB",
+      used_percent: 7.8
+    },
+    disks: [
+      { device: "/dev/mmcblk0p2", mountpoint: "/",       fstype: "ext4", total: "64 GB", used: "22 GB",  used_percent: 34.4 },
+      { device: "/dev/sda1",      mountpoint: "/mnt/hdd", fstype: "ext4", total: "4.0 TB", used: "1.7 TB", used_percent: 42.5 }
+    ],
+    processes: [
+      { pid: 1421, name: "jellyfin",  status: "running", cpu_percent: 18.4, mem_percent: 6.2, user: "jellyfin" },
+      { pid: 812,  name: "postgres",  status: "sleeping", cpu_percent: 11.1, mem_percent: 12.7, user: "postgres" },
+      { pid: 234,  name: "nginx",     status: "running", cpu_percent: 4.3,  mem_percent: 0.8,  user: "www-data" },
+      "... 47 more"
+    ],
+    users: [
+      { user: "pi",   terminal: "pts/0", host: "192.168.1.200" },
+      { user: "root", terminal: "tty1",  host: "" }
+    ],
+    docker: {
+      server_version: "26.0.0",
+      containers: [
+        { name: "jellyfin", image: "jellyfin/jellyfin:latest", state: "running", ports: ["8096:8096"] },
+        { name: "postgres", image: "postgres:16",               state: "running", ports: ["5432:5432"] },
+        { name: "traefik",  image: "traefik:3.0",               state: "running", ports: ["80:80","443:443"] }
+      ]
+    }
+  };
+
+  const listEl = document.getElementById('toggle-list');
+  const urlEl = document.getElementById('url-display');
+  const bodyEl = document.getElementById('response-body');
+  const summaryEl = document.getElementById('toggle-summary');
+
+  function render(){
+    // toggles
+    listEl.innerHTML = '';
+    SECTIONS.forEach(s => {
+      const row = document.createElement('div');
+      row.className = 'toggle' + (state[s.k] ? ' on' : '');
+      row.innerHTML = `
+        <span class="box"></span>
+        <span class="label">${s.k}<small>${s.desc}</small></span>
+        <span class="tag">${s.def ? 'default' : 'opt-in'}</span>
+      `;
+      row.addEventListener('click', () => { state[s.k] = !state[s.k]; render(); });
+      listEl.appendChild(row);
+    });
+    const on = SECTIONS.filter(s => state[s.k]).map(s => s.k);
+    summaryEl.textContent = `${on.length} of ${SECTIONS.length}`;
+
+    // url
+    const allDefault = SECTIONS.every(s => state[s.k] === s.def);
+    const allOn      = SECTIONS.every(s => state[s.k]);
+    let query = '';
+    if (allOn) query = '?include=all';
+    else if (!allDefault) query = '?include=' + on.join(',');
+    urlEl.innerHTML = `http://192.168.1.10:7891<span class="k">/metadata</span>` +
+      (query ? `<span class="q">${query.replace(/\?include=/,'<span class="k">?include=</span>')}</span>` : '');
+
+    // body
+    const out = {};
+    on.forEach(k => out[k] = RESPONSES[k]);
+    out.collected_at = "2026-04-18T12:12:22Z";
+    bodyEl.innerHTML = renderJSON(out, 0);
+  }
+
+  function renderJSON(v, depth){
+    const pad = ' '.repeat(depth * 2);
+    if (v === null) return '<span class="n">null</span>';
+    if (typeof v === 'number') return `<span class="n">${v}</span>`;
+    if (typeof v === 'boolean') return `<span class="n">${v}</span>`;
+    if (typeof v === 'string') return `<span class="s">"${escapeHtml(v)}"</span>`;
+    if (Array.isArray(v)){
+      if (v.length === 0) return '[]';
+      const inner = v.map(i => pad + '  ' + renderJSON(i, depth+1)).join(',\n');
+      return '[\n' + inner + '\n' + pad + ']';
+    }
+    if (typeof v === 'object'){
+      const keys = Object.keys(v);
+      if (keys.length === 0) return '{}';
+      const inner = keys.map(k => pad + '  <span class="k">"' + k + '"</span>: ' + renderJSON(v[k], depth+1)).join(',\n');
+      return '{\n' + inner + '\n' + pad + '}';
+    }
+    return String(v);
+  }
+  function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+  render();
+})();
+</script>
+
+</body>
+</html>
