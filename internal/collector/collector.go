@@ -39,7 +39,7 @@ var AllSections = map[string]func(context.Context, *MachineInfo){
 	"docker":    collectDocker,
 }
 
-func Collect(ctx context.Context, sections map[string]bool) (*MachineInfo, error) {
+func Collect(ctx context.Context, sections map[string]bool) *MachineInfo {
 	info := &MachineInfo{
 		CollectedAt: time.Now().UTC().Format(time.RFC3339),
 	}
@@ -61,7 +61,7 @@ func Collect(ctx context.Context, sections map[string]bool) (*MachineInfo, error
 	}
 	wg.Wait()
 
-	return info, nil
+	return info
 }
 
 func collectHost(ctx context.Context, info *MachineInfo) {
@@ -299,12 +299,24 @@ func collectUsers(ctx context.Context, info *MachineInfo) {
 	}
 }
 
+var (
+	dockerClient     *client.Client
+	dockerClientOnce sync.Once
+	dockerClientErr  error
+)
+
+func getDockerClient() (*client.Client, error) {
+	dockerClientOnce.Do(func() {
+		dockerClient, dockerClientErr = client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	})
+	return dockerClient, dockerClientErr
+}
+
 func collectDocker(ctx context.Context, info *MachineInfo) {
-	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	cli, err := getDockerClient()
 	if err != nil {
 		return
 	}
-	defer cli.Close()
 
 	ping, err := cli.Ping(ctx)
 	if err != nil {
@@ -339,8 +351,13 @@ func collectDocker(ctx context.Context, info *MachineInfo) {
 			}
 		}
 
+		id := c.ID
+		if len(id) > 12 {
+			id = id[:12]
+		}
+
 		dockerInfo.Containers = append(dockerInfo.Containers, ContainerInfo{
-			ID:      c.ID[:12],
+			ID:      id,
 			Name:    name,
 			Image:   c.Image,
 			State:   c.State,

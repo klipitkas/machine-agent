@@ -7,12 +7,13 @@ func humanBytes(b uint64) string {
 	if b < unit {
 		return fmt.Sprintf("%d B", b)
 	}
+	units := []string{"KB", "MB", "GB", "TB", "PB", "EB"}
 	div, exp := uint64(unit), 0
-	for n := b / unit; n >= unit; n /= unit {
+	for n := b / unit; n >= unit && exp < len(units)-1; n /= unit {
 		div *= unit
 		exp++
 	}
-	return fmt.Sprintf("%.1f %s", float64(b)/float64(div), []string{"KB", "MB", "GB", "TB", "PB"}[exp])
+	return fmt.Sprintf("%.1f %s", float64(b)/float64(div), units[exp])
 }
 
 type MachineInfo struct {

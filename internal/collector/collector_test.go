@@ -6,10 +6,7 @@ import (
 )
 
 func TestCollectDefaultSections(t *testing.T) {
-	info, err := Collect(context.Background(), DefaultSections)
-	if err != nil {
-		t.Fatalf("Collect returned error: %v", err)
-	}
+	info := Collect(context.Background(), DefaultSections)
 	if info.CollectedAt == "" {
 		t.Error("CollectedAt should not be empty")
 	}
@@ -35,10 +32,7 @@ func TestCollectDefaultSections(t *testing.T) {
 
 func TestCollectSpecificSection(t *testing.T) {
 	sections := map[string]bool{"host": true}
-	info, err := Collect(context.Background(), sections)
-	if err != nil {
-		t.Fatalf("Collect returned error: %v", err)
-	}
+	info := Collect(context.Background(), sections)
 	if info.Host == nil {
 		t.Error("Host should be populated")
 	}
@@ -52,10 +46,7 @@ func TestCollectSpecificSection(t *testing.T) {
 
 func TestCollectEmptySections(t *testing.T) {
 	sections := map[string]bool{}
-	info, err := Collect(context.Background(), sections)
-	if err != nil {
-		t.Fatalf("Collect returned error: %v", err)
-	}
+	info := Collect(context.Background(), sections)
 	if info.Host != nil {
 		t.Error("Host should not be populated with empty sections")
 	}

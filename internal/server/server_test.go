@@ -3,12 +3,11 @@ package server
 import (
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"testing"
 )
 
 func TestHealthEndpoint(t *testing.T) {
-	os.Unsetenv("TOKEN")
+	t.Setenv("TOKEN", "")
 	srv := New(":0")
 	req := httptest.NewRequest("GET", "/health", nil)
 	w := httptest.NewRecorder()
@@ -23,7 +22,7 @@ func TestHealthEndpoint(t *testing.T) {
 }
 
 func TestMetadataEndpoint(t *testing.T) {
-	os.Unsetenv("TOKEN")
+	t.Setenv("TOKEN", "")
 	srv := New(":0")
 	req := httptest.NewRequest("GET", "/metadata", nil)
 	w := httptest.NewRecorder()
@@ -35,7 +34,7 @@ func TestMetadataEndpoint(t *testing.T) {
 }
 
 func TestMetadataWithInclude(t *testing.T) {
-	os.Unsetenv("TOKEN")
+	t.Setenv("TOKEN", "")
 	srv := New(":0")
 	req := httptest.NewRequest("GET", "/metadata?include=host", nil)
 	w := httptest.NewRecorder()

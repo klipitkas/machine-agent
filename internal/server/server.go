@@ -1,11 +1,13 @@
 package server
 
 import (
+	"crypto/subtle"
 	"encoding/json"
 	"log"
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/klipitkas/machine-agent/internal/collector"
 )
@@ -23,18 +25,28 @@ func New(addr string) *http.Server {
 	handler = loggingMiddleware(handler)
 
 	return &http.Server{
-		Addr:    addr,
-		Handler: handler,
+		Addr:         addr,
+		Handler:      handler,
+		ReadTimeout:  5 * time.Second,
+		WriteTimeout: 30 * time.Second,
+		IdleTimeout:  120 * time.Second,
 	}
 }
 
 func authMiddleware(token string, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if auth := r.Header.Get("Authorization"); strings.HasPrefix(auth, "Bearer ") && auth[7:] == token {
+		if r.URL.Path == "/health" {
 			next.ServeHTTP(w, r)
 			return
 		}
-		if r.URL.Query().Get("token") == token {
+
+		if auth := r.Header.Get("Authorization"); strings.HasPrefix(auth, "Bearer ") {
+			if subtle.ConstantTimeCompare([]byte(auth[7:]), []byte(token)) == 1 {
+				next.ServeHTTP(w, r)
+				return
+			}
+		}
+		if subtle.ConstantTimeCompare([]byte(r.URL.Query().Get("token")), []byte(token)) == 1 {
 			next.ServeHTTP(w, r)
 			return
 		}
@@ -42,10 +54,21 @@ func authMiddleware(token string, next http.Handler) http.Handler {
 	})
 }
 
+type statusRecorder struct {
+	http.ResponseWriter
+	status int
+}
+
+func (r *statusRecorder) WriteHeader(code int) {
+	r.status = code
+	r.ResponseWriter.WriteHeader(code)
+}
+
 func loggingMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		log.Printf("%s %s from %s", r.Method, r.URL.Path, r.RemoteAddr)
-		next.ServeHTTP(w, r)
+		rec := &statusRecorder{ResponseWriter: w, status: http.StatusOK}
+		next.ServeHTTP(rec, r)
+		log.Printf("%s %s %d %s", r.Method, r.URL.Path, rec.status, r.RemoteAddr)
 	})
 }
 
@@ -75,11 +98,7 @@ func parseSections(r *http.Request) map[string]bool {
 
 func handleMetadata(w http.ResponseWriter, r *http.Request) {
 	sections := parseSections(r)
-	info, err := collector.Collect(r.Context(), sections)
-	if err != nil {
-		http.Error(w, `{"error":"failed to collect metadata"}`, http.StatusInternalServerError)
-		return
-	}
+	info := collector.Collect(r.Context(), sections)
 
 	w.Header().Set("Content-Type", "application/json")
 	enc := json.NewEncoder(w)
