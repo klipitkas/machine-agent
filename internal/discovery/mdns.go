@@ -14,6 +14,8 @@ var silentLogger = log.New(io.Discard, "", 0)
 
 const serviceType = "_machine-agent._tcp"
 
+type ServiceEntry = mdns.ServiceEntry
+
 func Advertise(port int) (func(), error) {
 	hostname, _ := os.Hostname()
 
@@ -39,26 +41,24 @@ func Advertise(port int) (func(), error) {
 	}, nil
 }
 
-func Discover() ([]*mdns.ServiceEntry, error) {
-	var entries []*mdns.ServiceEntry
-
+func Discover(onFound func(*mdns.ServiceEntry)) error {
 	entriesCh := make(chan *mdns.ServiceEntry, 16)
 
 	go func() {
 		for entry := range entriesCh {
-			entries = append(entries, entry)
+			onFound(entry)
 		}
 	}()
 
 	params := mdns.DefaultParams(serviceType)
 	params.DisableIPv6 = true
-	params.Timeout = 3 * time.Second
+	params.Timeout = 2 * time.Second
 	params.Entries = entriesCh
 	params.Logger = silentLogger
 
 	if err := mdns.Query(params); err != nil {
-		return nil, fmt.Errorf("mdns query: %w", err)
+		return fmt.Errorf("mdns query: %w", err)
 	}
 
-	return entries, nil
+	return nil
 }

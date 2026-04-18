@@ -31,21 +31,23 @@ func main() {
 	}
 
 	if *discover {
-		entries, err := discovery.Discover()
+		fmt.Println("Scanning for agents...")
+		found := 0
+		err := discovery.Discover(func(e *discovery.ServiceEntry) {
+			found++
+			fmt.Printf("  %-20s %s:%d", e.Name, e.AddrV4, e.Port)
+			if len(e.InfoFields) > 0 {
+				fmt.Printf("  (%s)", e.InfoFields[0])
+			}
+			fmt.Println()
+		})
 		if err != nil {
 			log.Fatalf("Discovery failed: %v", err)
 		}
-		if len(entries) == 0 {
-			fmt.Println("No agents found on the network.")
-			os.Exit(0)
-		}
-		fmt.Printf("Found %d agent(s):\n\n", len(entries))
-		for _, e := range entries {
-			fmt.Printf("  %-20s %s:%d\n", e.Name, e.AddrV4, e.Port)
-			if len(e.InfoFields) > 0 {
-				fmt.Printf("  %-20s %s\n", "", e.InfoFields[0])
-			}
-			fmt.Println()
+		if found == 0 {
+			fmt.Println("No agents found.")
+		} else {
+			fmt.Printf("\n%d agent(s) found.\n", found)
 		}
 		os.Exit(0)
 	}
