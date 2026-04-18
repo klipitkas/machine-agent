@@ -99,7 +99,23 @@ curl "http://192.168.1.10:7891/metadata?token=mysecret"
 
 The agent advertises itself on the local network via mDNS (Bonjour) as `_machine-agent._tcp`. Other tools can discover all running agents automatically without maintaining a list of IPs.
 
-Disable with `-no-mdns` if you don't want the agent to announce itself.
+Find all agents on your network:
+
+```bash
+./machine-agent -discover
+```
+
+```
+Found 2 agent(s):
+
+  raspberry-pi         192.168.1.10:7891
+                       machine-agent on raspberry-pi
+
+  nas-server           192.168.1.20:7891
+                       machine-agent on nas-server
+```
+
+Disable advertisement with `-no-mdns` if you don't want the agent to announce itself.
 
 > **Note:** When running in Docker, mDNS requires `--net=host` to broadcast on the LAN. With bridge networking, the announcement stays inside the container network.
 
