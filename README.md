@@ -2,6 +2,8 @@
 
 <img src=".github/banner.svg" alt="machine-agent"/>
 
+<br/>
+
 **A lightweight Go agent that exposes system metadata via a JSON HTTP endpoint.**
 
 Deploy it on devices across your local network to inspect and monitor them from a central tool.

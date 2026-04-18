@@ -1,8 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 380 80" width="380" height="80">
-  <rect width="380" height="80" rx="8" fill="#fff"/>
-  <path fill="#222" d="M-1-17h2v7h-2z" transform="translate(40 40)"/>
-  <path fill="#222" d="M-3-18h6v2h-6z" transform="translate(40 40)"/>
-  <path fill="none" stroke="#222" stroke-width="2" d="M-11-8h22v18h-22z" transform="translate(40 40)"/>
-  <path fill="#222" d="M-6-3h4v4h-4zM2-3h4v4H2zM-4 4h8v2h-8z" transform="translate(40 40)"/>
-  <text x="68" y="47" font-family="'SF Mono','Fira Code','JetBrains Mono','Menlo','Courier New',monospace" font-size="24" font-weight="700" fill="#222">machine-agent</text>
+  <rect width="380" height="80" fill="#fff"/>
+  <path fill="#222" d="M-1-17h2v7h-2z" transform="translate(100 40)"/>
+  <path fill="#222" d="M-3-18h6v2h-6z" transform="translate(100 40)"/>
+  <path fill="none" stroke="#222" stroke-width="2" d="M-11-8h22v18h-22z" transform="translate(100 40)"/>
+  <path fill="#222" d="M-6-3h4v4h-4zM2-3h4v4H2zM-4 4h8v2h-8z" transform="translate(100 40)"/>
+  <text x="128" y="47" font-family="'SF Mono','Fira Code','JetBrains Mono','Menlo','Courier New',monospace" font-size="24" font-weight="700" fill="#222">machine-agent</text>
 </svg>
