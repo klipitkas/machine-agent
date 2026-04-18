@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src=".github/banner.svg" alt="machine-agent" width="720"/>
+<img src=".github/banner.svg" alt="machine-agent"/>
 
 **A lightweight Go agent that exposes system metadata via a JSON HTTP endpoint.**
 
