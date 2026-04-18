@@ -1,4 +1,4 @@
-package main
+package server
 
 import (
 	"encoding/json"
@@ -6,9 +6,11 @@ import (
 	"net/http"
 	"os"
 	"strings"
+
+	"github.com/klipitkas/machine-agent/internal/collector"
 )
 
-func newServer(addr string) *http.Server {
+func New(addr string) *http.Server {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("GET /metadata", handleMetadata)
@@ -51,7 +53,7 @@ func parseSections(r *http.Request) map[string]bool {
 	include := r.URL.Query().Get("include")
 	if include == "all" {
 		sections := make(map[string]bool)
-		for name := range allSections {
+		for name := range collector.AllSections {
 			sections[name] = true
 		}
 		return sections
@@ -60,7 +62,7 @@ func parseSections(r *http.Request) map[string]bool {
 		sections := make(map[string]bool)
 		for _, s := range strings.Split(include, ",") {
 			s = strings.TrimSpace(s)
-			if _, ok := allSections[s]; ok {
+			if _, ok := collector.AllSections[s]; ok {
 				sections[s] = true
 			}
 		}
@@ -68,12 +70,12 @@ func parseSections(r *http.Request) map[string]bool {
 			return sections
 		}
 	}
-	return defaultSections
+	return collector.DefaultSections
 }
 
 func handleMetadata(w http.ResponseWriter, r *http.Request) {
 	sections := parseSections(r)
-	info, err := collect(r.Context(), sections)
+	info, err := collector.Collect(r.Context(), sections)
 	if err != nil {
 		http.Error(w, `{"error":"failed to collect metadata"}`, http.StatusInternalServerError)
 		return

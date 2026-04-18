@@ -1,21 +1,19 @@
 <div align="center">
 
 ```
-                    +-----------------------+
-                    |    machine-agent       |
-                    +-----------------------+
-                    | cpu    ||||||||| 24%   |
-                    | mem    ||||||    16GB  |
-                    | disk   ||||||||  460GB |
-                    | load   ||        0.42  |
-                    | docker ||| 3 running   |
-                    +-----------+-----------+
-                                |
-                    +-----------+-----------+
-                    |    :7891/metadata      |
-                    |   { "host": "pi-4",   |
-                    |     "os": "linux" }    |
-                    +-----------------------+
+        ___________
+       /           \
+      |  [O]   [O]  |
+      |      _      |
+      |    |___|    |
+       \___________/
+       __|_________|__
+      |               |
+      | machine-agent |
+      |_______________|
+        |           |
+        |    :7891  |
+        |___________|
 ```
 
 **A lightweight Go agent that exposes system metadata via a JSON HTTP endpoint.**
@@ -34,7 +32,7 @@ Deploy it on devices across your local network to inspect and monitor them from 
 ## Install
 
 ```bash
-go build -o machine-agent .
+go build -o machine-agent ./cmd/machine-agent
 ```
 
 ## Usage
@@ -92,6 +90,21 @@ curl -H "Authorization: Bearer mysecret" http://192.168.1.10:7891/metadata
 
 # Query param (convenient for browsers)
 curl "http://192.168.1.10:7891/metadata?token=mysecret"
+```
+
+## Project structure
+
+```
+machine-agent/
+├── cmd/machine-agent/main.go        # entry point
+├── internal/
+│   ├── collector/
+│   │   ├── collector.go             # metadata collection logic
+│   │   └── types.go                 # data types + helpers
+│   └── server/
+│       └── server.go                # HTTP server, auth, routing
+├── go.mod
+└── README.md
 ```
 
 ## Example

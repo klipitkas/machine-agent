@@ -7,6 +7,8 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+
+	"github.com/klipitkas/machine-agent/internal/server"
 )
 
 func main() {
@@ -21,7 +23,7 @@ func main() {
 		log.Println("No TOKEN set — running without authentication")
 	}
 
-	srv := newServer(addr)
+	srv := server.New(addr)
 
 	go func() {
 		log.Printf("machine-agent listening on %s", addr)

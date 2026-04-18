@@ -1,4 +1,4 @@
-package main
+package collector
 
 import "fmt"
 
@@ -16,17 +16,17 @@ func humanBytes(b uint64) string {
 }
 
 type MachineInfo struct {
-	Host        *HostInfo       `json:"host,omitempty"`
-	CPU         *CPUInfo        `json:"cpu,omitempty"`
-	Memory      *MemoryInfo     `json:"memory,omitempty"`
-	Swap        *SwapInfo       `json:"swap,omitempty"`
-	Disks       []DiskInfo      `json:"disks,omitempty"`
-	Network     *NetworkInfo    `json:"network,omitempty"`
-	Load        *LoadInfo       `json:"load,omitempty"`
-	Processes   []ProcessInfo   `json:"processes,omitempty"`
-	Users       []UserInfo      `json:"users,omitempty"`
-	Docker      *DockerInfo     `json:"docker,omitempty"`
-	CollectedAt string          `json:"collected_at"`
+	Host        *HostInfo     `json:"host,omitempty"`
+	CPU         *CPUInfo      `json:"cpu,omitempty"`
+	Memory      *MemoryInfo   `json:"memory,omitempty"`
+	Swap        *SwapInfo     `json:"swap,omitempty"`
+	Disks       []DiskInfo    `json:"disks,omitempty"`
+	Network     *NetworkInfo  `json:"network,omitempty"`
+	Load        *LoadInfo     `json:"load,omitempty"`
+	Processes   []ProcessInfo `json:"processes,omitempty"`
+	Users       []UserInfo    `json:"users,omitempty"`
+	Docker      *DockerInfo   `json:"docker,omitempty"`
+	CollectedAt string        `json:"collected_at"`
 }
 
 type HostInfo struct {
@@ -43,11 +43,11 @@ type HostInfo struct {
 }
 
 type CPUInfo struct {
-	Model      string    `json:"model"`
-	Cores      int       `json:"physical_cores"`
-	Threads    int       `json:"logical_cores"`
+	Model       string    `json:"model"`
+	Cores       int       `json:"physical_cores"`
+	Threads     int       `json:"logical_cores"`
 	UsagePerCPU []float64 `json:"usage_per_cpu_percent"`
-	UsageTotal float64   `json:"usage_total_percent"`
+	UsageTotal  float64   `json:"usage_total_percent"`
 }
 
 type MemoryInfo struct {
@@ -97,13 +97,13 @@ type NetInterface struct {
 }
 
 type NetIO struct {
-	Name      string `json:"name"`
-	BytesSent uint64 `json:"bytes_sent"`
-	BytesRecv uint64 `json:"bytes_recv"`
+	Name        string `json:"name"`
+	BytesSent   uint64 `json:"bytes_sent"`
+	BytesRecv   uint64 `json:"bytes_recv"`
 	PacketsSent uint64 `json:"packets_sent"`
 	PacketsRecv uint64 `json:"packets_recv"`
-	Errin     uint64 `json:"errors_in"`
-	Errout    uint64 `json:"errors_out"`
+	Errin       uint64 `json:"errors_in"`
+	Errout      uint64 `json:"errors_out"`
 }
 
 type LoadInfo struct {

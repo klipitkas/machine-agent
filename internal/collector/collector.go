@@ -1,4 +1,4 @@
-package main
+package collector
 
 import (
 	"context"
@@ -18,15 +18,15 @@ import (
 	"github.com/shirou/gopsutil/v4/process"
 )
 
-var defaultSections = map[string]bool{
-	"host":   true,
-	"cpu":    true,
-	"memory": true,
-	"load":   true,
+var DefaultSections = map[string]bool{
+	"host":    true,
+	"cpu":     true,
+	"memory":  true,
+	"load":    true,
 	"network": true,
 }
 
-var allSections = map[string]func(context.Context, *MachineInfo){
+var AllSections = map[string]func(context.Context, *MachineInfo){
 	"host":      collectHost,
 	"cpu":       collectCPU,
 	"memory":    collectMemory,
@@ -39,13 +39,13 @@ var allSections = map[string]func(context.Context, *MachineInfo){
 	"docker":    collectDocker,
 }
 
-func collect(ctx context.Context, sections map[string]bool) (*MachineInfo, error) {
+func Collect(ctx context.Context, sections map[string]bool) (*MachineInfo, error) {
 	info := &MachineInfo{
 		CollectedAt: time.Now().UTC().Format(time.RFC3339),
 	}
 
 	var collectors []func(context.Context, *MachineInfo)
-	for name, fn := range allSections {
+	for name, fn := range AllSections {
 		if sections[name] {
 			collectors = append(collectors, fn)
 		}
@@ -133,12 +133,12 @@ func collectSwap(ctx context.Context, info *MachineInfo) {
 	s, err := mem.SwapMemoryWithContext(ctx)
 	if err == nil {
 		info.Swap = &SwapInfo{
-			Total:       s.Total,
-			TotalHuman:  humanBytes(s.Total),
-			Used:        s.Used,
-			UsedHuman:   humanBytes(s.Used),
-			Free:        s.Free,
-			FreeHuman:   humanBytes(s.Free),
+			Total:      s.Total,
+			TotalHuman: humanBytes(s.Total),
+			Used:       s.Used,
+			UsedHuman:  humanBytes(s.Used),
+			Free:       s.Free,
+			FreeHuman:  humanBytes(s.Free),
 			UsedPercent: s.UsedPercent,
 		}
 	}
