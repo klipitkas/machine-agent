@@ -11,6 +11,13 @@ Deploy it on devices across your local network to inspect and monitor them from 
 
 </div>
 
+## Quick Start
+
+```bash
+docker run -d -p 7891:7891 klipitkas/machine-agent
+curl http://localhost:7891/metadata
+```
+
 ## Install
 
 ```bash
