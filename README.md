@@ -22,6 +22,25 @@ go build -o machine-agent ./cmd/machine-agent
 TOKEN=mysecret ./machine-agent     # with auth
 ```
 
+## Docker
+
+```bash
+# Build
+docker build -t machine-agent .
+
+# Run
+docker run -d -p 7891:7891 machine-agent
+
+# With auth
+docker run -d -p 7891:7891 -e TOKEN=mysecret machine-agent
+
+# Custom port
+docker run -d -p 9999:9999 machine-agent -port 9999
+
+# With Docker socket (to collect Docker container info from the host)
+docker run -d -p 7891:7891 -v /var/run/docker.sock:/var/run/docker.sock machine-agent
+```
+
 ## Endpoints
 
 ### `GET /metadata`
