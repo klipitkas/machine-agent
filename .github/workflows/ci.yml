@@ -62,7 +62,8 @@ jobs:
           EXT=""
           if [ "$GOOS" = "windows" ]; then EXT=".exe"; fi
           BINARY="machine-agent-${GOOS}-${GOARCH}${EXT}"
-          go build -ldflags="-s -w" -o "${BINARY}" ./cmd/machine-agent
+          VERSION="${GITHUB_REF_NAME}"
+          go build -ldflags="-s -w -X main.version=${VERSION}" -o "${BINARY}" ./cmd/machine-agent
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
