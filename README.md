@@ -1,19 +1,6 @@
 <div align="center">
 
-```
-  +--------------------+
-  |   machine-agent    |
---+   :7891            +--
---+   GET /metadata    +--
-  +--------------------+
-
-  [pi] ---+--- [nas] ---+--- [desktop]
-          |             |
-      +---+-------------+---+
-      |    your-tool         |
-      |    GET /metadata     |
-      +----------------------+
-```
+<img src=".github/banner.svg" alt="machine-agent" width="720"/>
 
 **A lightweight Go agent that exposes system metadata via a JSON HTTP endpoint.**
 
