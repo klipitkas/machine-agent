@@ -1,19 +1,11 @@
 <div align="center">
 
 ```
-        ___________
-       /           \
-      |  [O]   [O]  |
-      |      _      |
-      |    |___|    |
-       \___________/
-       __|_________|__
-      |               |
-      | machine-agent |
-      |_______________|
-        |           |
-        |    :7891  |
-        |___________|
+    ╔══════════════════╗
+    ║  machine-agent   ║
+  ──╢  :7891           ╟──
+  ──╢  GET /metadata   ╟──
+    ╚══════════════════╝
 ```
 
 **A lightweight Go agent that exposes system metadata via a JSON HTTP endpoint.**
