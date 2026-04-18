@@ -2,12 +2,15 @@ package discovery
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"time"
 
 	"github.com/hashicorp/mdns"
 )
+
+var silentLogger = log.New(io.Discard, "", 0)
 
 const serviceType = "_machine-agent._tcp"
 
@@ -24,7 +27,7 @@ func Advertise(port int) (func(), error) {
 		return nil, fmt.Errorf("mdns service: %w", err)
 	}
 
-	server, err := mdns.NewServer(&mdns.Config{Zone: service})
+	server, err := mdns.NewServer(&mdns.Config{Zone: service, Logger: silentLogger})
 	if err != nil {
 		return nil, fmt.Errorf("mdns server: %w", err)
 	}
@@ -51,6 +54,7 @@ func Discover() ([]*mdns.ServiceEntry, error) {
 	params.DisableIPv6 = true
 	params.Timeout = 3 * time.Second
 	params.Entries = entriesCh
+	params.Logger = silentLogger
 
 	if err := mdns.Query(params); err != nil {
 		return nil, fmt.Errorf("mdns query: %w", err)
