@@ -22,10 +22,31 @@ func main() {
 	port := flag.Int("port", 7891, "port to listen on")
 	showVersion := flag.Bool("version", false, "print version and exit")
 	noMDNS := flag.Bool("no-mdns", false, "disable mDNS service advertisement")
+	discover := flag.Bool("discover", false, "discover agents on the network and exit")
 	flag.Parse()
 
 	if *showVersion {
 		fmt.Println(version)
+		os.Exit(0)
+	}
+
+	if *discover {
+		entries, err := discovery.Discover()
+		if err != nil {
+			log.Fatalf("Discovery failed: %v", err)
+		}
+		if len(entries) == 0 {
+			fmt.Println("No agents found on the network.")
+			os.Exit(0)
+		}
+		fmt.Printf("Found %d agent(s):\n\n", len(entries))
+		for _, e := range entries {
+			fmt.Printf("  %-20s %s:%d\n", e.Name, e.AddrV4, e.Port)
+			if len(e.InfoFields) > 0 {
+				fmt.Printf("  %-20s %s\n", "", e.InfoFields[0])
+			}
+			fmt.Println()
+		}
 		os.Exit(0)
 	}
 
