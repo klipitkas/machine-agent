@@ -19,6 +19,8 @@ go build -o machine-agent ./cmd/machine-agent
 ```bash
 ./machine-agent                    # default port 7891
 ./machine-agent -port 9999         # custom port
+./machine-agent -no-mdns           # disable network discovery
+./machine-agent -version           # print version and exit
 TOKEN=mysecret ./machine-agent     # with auth
 ```
 
@@ -39,6 +41,9 @@ docker run -d -p 9999:9999 machine-agent -port 9999
 
 # With Docker socket (to collect Docker container info from the host)
 docker run -d -p 7891:7891 -v /var/run/docker.sock:/var/run/docker.sock machine-agent
+
+# With host networking (required for mDNS discovery to work)
+docker run -d --net=host machine-agent
 ```
 
 ## Endpoints
@@ -90,6 +95,14 @@ curl -H "Authorization: Bearer mysecret" http://192.168.1.10:7891/metadata
 curl "http://192.168.1.10:7891/metadata?token=mysecret"
 ```
 
+## Network Discovery
+
+The agent advertises itself on the local network via mDNS (Bonjour) as `_machine-agent._tcp`. Other tools can discover all running agents automatically without maintaining a list of IPs.
+
+Disable with `-no-mdns` if you don't want the agent to announce itself.
+
+> **Note:** When running in Docker, mDNS requires `--net=host` to broadcast on the LAN. With bridge networking, the announcement stays inside the container network.
+
 ## Project structure
 
 ```
@@ -99,6 +112,8 @@ machine-agent/
 │   ├── collector/
 │   │   ├── collector.go             # metadata collection logic
 │   │   └── types.go                 # data types + helpers
+│   ├── discovery/
+│   │   └── mdns.go                  # mDNS service advertisement
 │   └── server/
 │       └── server.go                # HTTP server, auth, routing
 ├── go.mod
@@ -128,4 +143,4 @@ curl -s http://localhost:7891/metadata?include=memory | jq .
 
 ## License
 
-MIT
+See the [LICENSE](LICENSE) file for details.

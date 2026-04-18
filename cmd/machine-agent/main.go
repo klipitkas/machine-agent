@@ -12,6 +12,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/klipitkas/machine-agent/internal/discovery"
 	"github.com/klipitkas/machine-agent/internal/server"
 )
 
@@ -20,6 +21,7 @@ var version = "dev"
 func main() {
 	port := flag.Int("port", 7891, "port to listen on")
 	showVersion := flag.Bool("version", false, "print version and exit")
+	noMDNS := flag.Bool("no-mdns", false, "disable mDNS service advertisement")
 	flag.Parse()
 
 	if *showVersion {
@@ -33,6 +35,15 @@ func main() {
 		log.Println("Token authentication enabled")
 	} else {
 		log.Println("No TOKEN set — running without authentication")
+	}
+
+	if !*noMDNS {
+		shutdown, err := discovery.Advertise(*port)
+		if err != nil {
+			log.Printf("mDNS advertisement failed: %v", err)
+		} else {
+			defer shutdown()
+		}
 	}
 
 	srv := server.New(addr)
