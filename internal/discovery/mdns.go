@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"time"
 
 	"github.com/hashicorp/mdns"
 )
@@ -17,7 +18,8 @@ func Advertise(port int) (func(), error) {
 		fmt.Sprintf("machine-agent on %s", hostname),
 	}
 
-	service, err := mdns.NewMDNSService(hostname, serviceType, "", "", port, nil, info)
+	instance := fmt.Sprintf("%s-%d", hostname, port)
+	service, err := mdns.NewMDNSService(instance, serviceType, "", "", port, nil, info)
 	if err != nil {
 		return nil, fmt.Errorf("mdns service: %w", err)
 	}
@@ -47,6 +49,7 @@ func Discover() ([]*mdns.ServiceEntry, error) {
 
 	params := mdns.DefaultParams(serviceType)
 	params.DisableIPv6 = true
+	params.Timeout = 3 * time.Second
 	params.Entries = entriesCh
 
 	if err := mdns.Query(params); err != nil {
