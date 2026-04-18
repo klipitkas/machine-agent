@@ -12,13 +12,6 @@
 
 Deploy it on devices across your local network to inspect and monitor them from a central tool.
 
-```
-  [raspberry-pi]        [nas-server]        [desktop]         [your-tool]
-   :7891                 :7891               :7891                 |
-     |                     |                   |                   |
-     +---------------------+-------------------+------- GET /metadata
-```
-
 </div>
 
 ## Install
