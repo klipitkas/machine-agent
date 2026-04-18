@@ -14,10 +14,7 @@ Deploy it on devices across your local network to inspect and monitor them from 
 ## Quick Start
 
 ```bash
-docker run -d --net=host --pid=host \
-  -v /proc:/host/proc:ro -v /sys:/host/sys:ro -v /etc:/host/etc:ro \
-  -e HOST_PROC=/host/proc -e HOST_SYS=/host/sys -e HOST_ETC=/host/etc \
-  klipitkas/machine-agent
+docker run -d -p 7891:7891 klipitkas/machine-agent
 curl http://localhost:7891/metadata
 ```
 
@@ -39,37 +36,32 @@ TOKEN=mysecret ./machine-agent     # with auth
 
 ## Docker
 
-> **Important:** To report the **host's** metadata (not the container's), mount `/proc`, `/sys`, and `/etc` from the host and set the `HOST_*` environment variables as shown below.
-
 ```bash
 # Build
 docker build -t machine-agent .
 
-# Run (host metadata)
-docker run -d --net=host --pid=host \
-  -v /proc:/host/proc:ro -v /sys:/host/sys:ro -v /etc:/host/etc:ro \
-  -e HOST_PROC=/host/proc -e HOST_SYS=/host/sys -e HOST_ETC=/host/etc \
-  machine-agent
+# Run
+docker run -d -p 7891:7891 machine-agent
 
 # With auth
-docker run -d --net=host --pid=host \
-  -v /proc:/host/proc:ro -v /sys:/host/sys:ro -v /etc:/host/etc:ro \
-  -e HOST_PROC=/host/proc -e HOST_SYS=/host/sys -e HOST_ETC=/host/etc \
-  -e TOKEN=mysecret machine-agent
-
-# With Docker socket (to also collect Docker container info)
-docker run -d --net=host --pid=host \
-  -v /proc:/host/proc:ro -v /sys:/host/sys:ro -v /etc:/host/etc:ro \
-  -v /var/run/docker.sock:/var/run/docker.sock:ro \
-  -e HOST_PROC=/host/proc -e HOST_SYS=/host/sys -e HOST_ETC=/host/etc \
-  machine-agent
+docker run -d -p 7891:7891 -e TOKEN=mysecret machine-agent
 
 # Custom port
-docker run -d --net=host --pid=host \
-  -v /proc:/host/proc:ro -v /sys:/host/sys:ro -v /etc:/host/etc:ro \
-  -e HOST_PROC=/host/proc -e HOST_SYS=/host/sys -e HOST_ETC=/host/etc \
-  machine-agent -port 9999
+docker run -d -p 9999:9999 machine-agent -port 9999
+
+# With Docker socket (to collect Docker container info from the host)
+docker run -d -p 7891:7891 -v /var/run/docker.sock:/var/run/docker.sock:ro machine-agent
 ```
+
+> **Linux only:** To report the **host's** metadata instead of the container's, mount `/proc`, `/sys`, `/etc` and use host networking:
+>
+> ```bash
+> docker run -d --net=host --pid=host \
+>   -v /proc:/host/proc:ro -v /sys:/host/sys:ro -v /etc:/host/etc:ro \
+>   -v /var/run/docker.sock:/var/run/docker.sock:ro \
+>   -e HOST_PROC=/host/proc -e HOST_SYS=/host/sys -e HOST_ETC=/host/etc \
+>   machine-agent
+> ```
 
 ## Endpoints
 
